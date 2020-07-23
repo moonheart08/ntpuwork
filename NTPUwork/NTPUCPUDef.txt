@@ -1,0 +1,275 @@
+﻿; go to https://hlorenzi.github.io/customasm/web/ to use, or download customasm. Your pick.
+#cpudef
+{
+    #bits 16
+    
+    #tokendef gpr {
+        r0 = 0,
+        r1 = 1,
+        r2 = 2,
+        r3 = 3,
+        r4 = 4,
+        r5 = 5,
+        r6 = 6,
+        r7 = 7,
+        sp = 7,
+    }
+    
+    #tokendef jmptypes {
+        mp = 0,
+        c = 1,
+        nc = 2,
+        z = 3,
+        nz = 4,
+        o = 5,
+        no = 6,
+        s = 7,
+        ns = 8,
+        sz = 9,
+        nsz = 10,
+        cz = 11,
+        ncz = 12,
+        p = 13,
+        np = 14,
+        
+    
+    }
+    
+    ld {dest: gpr}, {src: gpr} 
+        -> 0x00 @ dest[2:0] @ 0b00 @ src[2:0] 
+    
+    ld {dest: gpr}, [{src: gpr}]
+        -> 0x00 @ dest[2:0] @ 0b01 @ src[2:0]
+    
+    ld {dest: gpr}, [R7 + {offs: s4}]
+        -> 0x00 @ dest[2:0] @ 0b1 @ offs[3:0]
+        
+    ld {dest: gpr}, #{imm: i16}
+        -> 0x01 @ dest[2:0] @ 0b00000 @ imm[7:0] @ imm[15:8]
+    
+    ld {dest: gpr}, [#{imm: i16}]
+        -> 0x01 @ dest[2:0] @ 0b00001 @ imm[7:0] @ imm[15:8]
+        
+    ld [#{imm: i16}], {src: gpr}
+        -> 0x01 @ src[2:0] @ 0b00010 @ imm[7:0] @ imm[15:8]
+    
+    ld [{dest: gpr}], {src: gpr}
+        -> 0x01 @ dest[2:0] @ 0b01 @ src[2:0]
+        
+    ld [R7 + {offs: s4}], {src: gpr}
+        -> 0x01 @ src[2:0] @ 0b1 @ offs[3:0]
+        
+    add {dest: gpr}, {src: gpr} 
+        -> 0x02 @ dest[2:0] @ 0b00 @ src[2:0] 
+    
+    add {dest: gpr}, [{src: gpr}]
+        -> 0x02 @ dest[2:0] @ 0b01 @ src[2:0]
+    
+    add {dest: gpr}, [R7 + {offs: s4}]
+        -> 0x02 @ dest[2:0] @ 0b1 @ offs[3:0]
+        
+    add {dest: gpr}, #{imm: i16}
+        -> 0x03 @ dest[2:0] @ 0b00000 @ imm[7:0] @ imm[15:8]
+    
+    add {dest: gpr}, [#{imm: i16}]
+        -> 0x03 @ dest[2:0] @ 0b00001 @ imm[7:0] @ imm[15:8]
+        
+    add [#{imm: i16}], {src: gpr}
+        -> 0x03 @ src[2:0] @ 0b00010 @ imm[7:0] @ imm[15:8]
+    
+    add [{dest: gpr}], {src: gpr}
+        -> 0x03 @ dest[2:0] @ 0b01 @ src[2:0]
+        
+    add [R7 + {offs: s4}], {src: gpr}
+        -> 0x03 @ src[2:0] @ 0b1 @ offs[3:0]
+        
+        
+    sub {dest: gpr}, {src: gpr} 
+        -> 0x04 @ dest[2:0] @ 0b00 @ src[2:0] 
+    
+    sub {dest: gpr}, [{src: gpr}]
+        -> 0x04 @ dest[2:0] @ 0b01 @ src[2:0]
+    
+    sub {dest: gpr}, [R7 + {offs: s4}]
+        -> 0x04 @ dest[2:0] @ 0b1 @ offs[3:0]
+        
+    sub {dest: gpr}, #{imm: i16}
+        -> 0x05 @ dest[2:0] @ 0b00000 @ imm[7:0] @ imm[15:8]
+    
+    sub {dest: gpr}, [#{imm: i16}]
+        -> 0x05 @ dest[2:0] @ 0b00001 @ imm[7:0] @ imm[15:8]
+        
+    sub [#{imm: i16}], {src: gpr}
+        -> 0x05 @ src[2:0] @ 0b00010 @ imm[7:0] @ imm[15:8]
+    
+    sub [{dest: gpr}], {src: gpr}
+        -> 0x05 @ dest[2:0] @ 0b01 @ src[2:0]
+        
+    sub [R7 + {offs: s4}], {src: gpr}
+        -> 0x05 @ src[2:0] @ 0b1 @ offs[3:0]
+        
+        
+    and {dest: gpr}, {src: gpr} 
+        -> 0x06 @ dest[2:0] @ 0b00 @ src[2:0] 
+    
+    and {dest: gpr}, [{src: gpr}]
+        -> 0x06 @ dest[2:0] @ 0b01 @ src[2:0]
+    
+    and {dest: gpr}, [R7 + {offs: s4}]
+        -> 0x06 @ dest[2:0] @ 0b1 @ offs[3:0]
+        
+    and {dest: gpr}, #{imm: i16}
+        -> 0x07 @ dest[2:0] @ 0b00000 @ imm[7:0] @ imm[15:8]
+    
+    and {dest: gpr}, [#{imm: i16}]
+        -> 0x07 @ dest[2:0] @ 0b00001 @ imm[7:0] @ imm[15:8]
+        
+    and [#{imm: i16}], {src: gpr}
+        -> 0x07 @ src[2:0] @ 0b00010 @ imm[7:0] @ imm[15:8]
+    
+    and [{dest: gpr}], {src: gpr}
+        -> 0x07 @ dest[2:0] @ 0b01 @ src[2:0]
+        
+    and [R7 + {offs: s4}], {src: gpr}
+        -> 0x07 @ src[2:0] @ 0b1 @ offs[3:0]
+        
+    
+    or {dest: gpr}, {src: gpr} 
+        -> 0x08 @ dest[2:0] @ 0b00 @ src[2:0] 
+    
+    or {dest: gpr}, [{src: gpr}]
+        -> 0x08 @ dest[2:0] @ 0b01 @ src[2:0]
+    
+    or {dest: gpr}, [R7 + {offs: s4}]
+        -> 0x08 @ dest[2:0] @ 0b1 @ offs[3:0]
+        
+    or {dest: gpr}, #{imm: i16}
+        -> 0x09 @ dest[2:0] @ 0b00000 @ imm[7:0] @ imm[15:8]
+    
+    or {dest: gpr}, [#{imm: i16}]
+        -> 0x09 @ dest[2:0] @ 0b00001 @ imm[7:0] @ imm[15:8]
+        
+    or [#{imm: i16}], {src: gpr}
+        -> 0x09 @ src[2:0] @ 0b00010 @ imm[7:0] @ imm[15:8]
+    
+    or [{dest: gpr}], {src: gpr}
+        -> 0x09 @ dest[2:0] @ 0b01 @ src[2:0]
+        
+    or [R7 + {offs: s4}], {src: gpr}
+        -> 0x09 @ src[2:0] @ 0b1 @ offs[3:0]
+        
+    
+    xor {dest: gpr}, {src: gpr} 
+        -> 0x0A @ dest[2:0] @ 0b00 @ src[2:0] 
+    
+    xor {dest: gpr}, [{src: gpr}]
+        -> 0x0A @ dest[2:0] @ 0b01 @ src[2:0]
+    
+    xor {dest: gpr}, [R7 + {offs: s4}]
+        -> 0x0A @ dest[2:0] @ 0b1 @ offs[3:0]
+        
+    xor {dest: gpr}, #{imm: i16}
+        -> 0x0B @ dest[2:0] @ 0b00000 @ imm[7:0] @ imm[15:8]
+    
+    xor {dest: gpr}, [#{imm: i16}]
+        -> 0x0B @ dest[2:0] @ 0b00001 @ imm[7:0] @ imm[15:8]
+        
+    xor [#{imm: i16}], {src: gpr}
+        -> 0x0B @ src[2:0] @ 0b00010 @ imm[7:0] @ imm[15:8]
+    
+    xor [{dest: gpr}], {src: gpr}
+        -> 0x0B @ dest[2:0] @ 0b01 @ src[2:0]
+        
+    xor [R7 + {offs: s4}], {src: gpr}
+        -> 0x0B @ src[2:0] @ 0b1 @ offs[3:0]
+        
+    
+    shl {dest: gpr}, {src: gpr} 
+        -> 0x0C @ dest[2:0] @ 0b00 @ src[2:0] 
+    
+    shl {dest: gpr}, [{src: gpr}]
+        -> 0x0C @ dest[2:0] @ 0b01 @ src[2:0]
+    
+    shl {dest: gpr}, [R7 + {offs: s4}]
+        -> 0x0C @ dest[2:0] @ 0b1 @ offs[3:0]
+        
+    shl {dest: gpr}, #{imm: i16}
+        -> 0x0D @ dest[2:0] @ 0b00000 @ imm[7:0] @ imm[15:8]
+    
+    shl {dest: gpr}, [#{imm: i16}]
+        -> 0x0D @ dest[2:0] @ 0b00001 @ imm[7:0] @ imm[15:8]
+        
+    shl [#{imm: i16}], {src: gpr}
+        -> 0x0D @ src[2:0] @ 0b00010 @ imm[7:0] @ imm[15:8]
+    
+    shl [{dest: gpr}], {src: gpr}
+        -> 0x0D @ dest[2:0] @ 0b01 @ src[2:0]
+        
+    shl [R7 + {offs: s4}], {src: gpr}
+        -> 0x0D @ src[2:0] @ 0b1 @ offs[3:0]
+        
+    
+    shr {dest: gpr}, {src: gpr} 
+        -> 0x0E @ dest[2:0] @ 0b00 @ src[2:0] 
+    
+    shr {dest: gpr}, [{src: gpr}]
+        -> 0x0E @ dest[2:0] @ 0b01 @ src[2:0]
+    
+    shr {dest: gpr}, [R7 + {offs: s4}]
+        -> 0x0E @ dest[2:0] @ 0b1 @ offs[3:0]
+        
+    shr {dest: gpr}, #{imm: i16}
+        -> 0x0F @ dest[2:0] @ 0b00000 @ imm[7:0] @ imm[15:8]
+    
+    shr {dest: gpr}, [#{imm: i16}]
+        -> 0x0F @ dest[2:0] @ 0b00001 @ imm[7:0] @ imm[15:8]
+        
+    shr [#{imm: i16}], {src: gpr}
+        -> 0x0F @ src[2:0] @ 0b00010 @ imm[7:0] @ imm[15:8]
+    
+    shr [{dest: gpr}], {src: gpr}
+        -> 0x0F @ dest[2:0] @ 0b01 @ src[2:0]
+        
+    shr [R7 + {offs: s4}], {src: gpr}
+        -> 0x0F @ src[2:0] @ 0b1 @ offs[3:0]
+        
+        
+        
+    j{t: jmptypes} {a: gpr}
+        -> 0xFC @ t[3:0] @ 0b0 @ a[2:0]
+        
+    j{t: jmptypes} {imm: u16}
+        -> 0xFD @ t[3:0] @ 0x0 @ imm[7:0] @ imm[15:8]
+        
+    rst {rstcode: i8}
+        -> 0xFE @ rstcode[7:0]
+    
+    halt {haltcode: i8}
+        -> 0xFF @ haltcode[7:0]
+}
+start:
+    ld r1, r2
+    ld r0, #2
+    add r0, #-2
+    jz .what
+    halt 0
+.what:
+    halt 1
+
+; R0 | Str to print
+; R1 | CLOB
+; R2 | CLOB
+
+print_str_8:
+.loop:
+    ld r1, [r0]
+    ld r2, #0xff
+    and r2, r1 ; R2 contains byte 1
+    jz .done
+    ld [#0xF000], r2
+    shr r1, #8 ; R1 contains byte 2
+    jz .done
+    ld [#0xF000], r2
+    jmp .loop
+.done:
+;   ret (r7)+

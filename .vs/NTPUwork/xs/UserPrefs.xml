@@ -1,0 +1,33 @@
+﻿<Properties StartupConfiguration="{0E17415A-62E1-4564-AED8-A9429D6E1D8A}|Default">
+  <MonoDevelop.Ide.Workbench ActiveDocument="NTPUwork/NTPUCPUDef.txt">
+    <Files>
+      <File FileName="NTPUwork/NTPUCPU.cs" Line="292" Column="31" />
+      <File FileName="NTPUwork/Program.cs" Line="17" Column="14" />
+      <File FileName="NTPUwork/NTPUCPUDef.txt" Line="12" Column="16" />
+      <File FileName="NTPUwork/NTPUCPU.Instructions.cs" Line="54" Column="35" />
+      <File FileName="NTPUAssembler/Preprocessor.cs" Line="8" Column="38" />
+      <File FileName="NTPUAssembler/Instruction.cs" Line="8" Column="10" />
+      <File FileName="NTPUAssembler/Operand.cs" Line="8" Column="13" />
+    </Files>
+    <Pads>
+      <Pad Id="ProjectPad">
+        <State name="__root__">
+          <Node name="NTPUwork" expanded="True">
+            <Node name="NTPUAssembler" expanded="True" />
+            <Node name="NTPUwork" expanded="True">
+              <Node name="NTPUCPUDef.txt" selected="True" />
+            </Node>
+          </Node>
+        </State>
+      </Pad>
+    </Pads>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+  <MonoDevelop.Ide.ItemProperties.NTPUwork PreferredExecutionTarget="MonoDevelop.Default" />
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MultiItemStartupConfigurations />
+  <MonoDevelop.Ide.ItemProperties.NTPUAssembler FirstBuild="True" />
+</Properties>
