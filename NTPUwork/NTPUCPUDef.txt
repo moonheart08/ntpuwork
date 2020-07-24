@@ -234,6 +234,81 @@
         -> 0x0F @ src[2:0] @ 0b1 @ offs[3:0]
         
         
+    rol {dest: gpr}, {src: gpr} 
+        -> 0x10 @ dest[2:0] @ 0b00 @ src[2:0] 
+    
+    rol {dest: gpr}, [{src: gpr}]
+        -> 0x10 @ dest[2:0] @ 0b01 @ src[2:0]
+    
+    rol {dest: gpr}, [R7 + {offs: s4}]
+        -> 0x10 @ dest[2:0] @ 0b1 @ offs[3:0]
+        
+    rol {dest: gpr}, #{imm: i16}
+        -> 0x11 @ dest[2:0] @ 0b00000 @ imm[7:0] @ imm[15:8]
+    
+    rol {dest: gpr}, [#{imm: i16}]
+        -> 0x11 @ dest[2:0] @ 0b00001 @ imm[7:0] @ imm[15:8]
+        
+    rol [#{imm: i16}], {src: gpr}
+        -> 0x11 @ src[2:0] @ 0b00010 @ imm[7:0] @ imm[15:8]
+    
+    rol [{dest: gpr}], {src: gpr}
+        -> 0x11 @ dest[2:0] @ 0b01 @ src[2:0]
+        
+    rol [R7 + {offs: s4}], {src: gpr}
+        -> 0x11 @ src[2:0] @ 0b1 @ offs[3:0]
+        
+    
+    ror {dest: gpr}, {src: gpr} 
+        -> 0x12 @ dest[2:0] @ 0b00 @ src[2:0] 
+    
+    ror {dest: gpr}, [{src: gpr}]
+        -> 0x12 @ dest[2:0] @ 0b01 @ src[2:0]
+    
+    ror {dest: gpr}, [R7 + {offs: s4}]
+        -> 0x12 @ dest[2:0] @ 0b1 @ offs[3:0]
+        
+    ror {dest: gpr}, #{imm: i16}
+        -> 0x13 @ dest[2:0] @ 0b00000 @ imm[7:0] @ imm[15:8]
+    
+    ror {dest: gpr}, [#{imm: i16}]
+        -> 0x13 @ dest[2:0] @ 0b00001 @ imm[7:0] @ imm[15:8]
+        
+    ror [#{imm: i16}], {src: gpr}
+        -> 0x13 @ src[2:0] @ 0b00010 @ imm[7:0] @ imm[15:8]
+    
+    ror [{dest: gpr}], {src: gpr}
+        -> 0x13 @ dest[2:0] @ 0b01 @ src[2:0]
+        
+    ror [R7 + {offs: s4}], {src: gpr}
+        -> 0x13 @ src[2:0] @ 0b1 @ offs[3:0]
+        
+        
+    cmp {dest: gpr}, {src: gpr} 
+        -> 0x14 @ dest[2:0] @ 0b00 @ src[2:0] 
+    
+    cmp {dest: gpr}, [{src: gpr}]
+        -> 0x14 @ dest[2:0] @ 0b01 @ src[2:0]
+    
+    cmp {dest: gpr}, [R7 + {offs: s4}]
+        -> 0x14 @ dest[2:0] @ 0b1 @ offs[3:0]
+        
+    cmp {dest: gpr}, #{imm: i16}
+        -> 0x15 @ dest[2:0] @ 0b00000 @ imm[7:0] @ imm[15:8]
+    
+    cmp {dest: gpr}, [#{imm: i16}]
+        -> 0x15 @ dest[2:0] @ 0b00001 @ imm[7:0] @ imm[15:8]
+        
+    cmp [#{imm: i16}], {src: gpr}
+        -> 0x15 @ src[2:0] @ 0b00010 @ imm[7:0] @ imm[15:8]
+    
+    cmp [{dest: gpr}], {src: gpr}
+        -> 0x15 @ dest[2:0] @ 0b01 @ src[2:0]
+        
+    cmp [R7 + {offs: s4}], {src: gpr}
+        -> 0x15 @ src[2:0] @ 0b1 @ offs[3:0]
+        
+    
         
     j{t: jmptypes} {a: gpr}
         -> 0xFC @ t[3:0] @ 0b0 @ a[2:0]
