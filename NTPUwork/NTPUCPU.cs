@@ -5,7 +5,7 @@ namespace NTPUwork
 
     public partial class NTPUCPU
     {
-        private const UInt32 ROM_BEGIN = 0xFE0000;
+        private const uint ROM_BEGIN = 0xFE0000;
 
         private enum NTPUMode
         {
@@ -13,21 +13,18 @@ namespace NTPUwork
             User,
         }
 
-        private UInt16[] _memory;
+        private ushort[] _memory;
 
-        private UInt16[] _rom;
+        private ushort[] _rom;
 
-        private UInt16[] _registers;
+        private ushort[] _registers;
 
-        // Segment selectors, allows code to have an exclusively 16-bit
-        // address space in the 24-bit enviornment.
-        // The 16-bit address space for code is split up into 8 sections, 
-        // which can freely map to any of the 2048 possible segments.
-        // The upper 5 bits are always zero, and writes to them are ignored.
-        private UInt16[] _user_seg_selectors;
-        private UInt16[] _sys_seg_selectors;
+        private uint _user_page_table_r;
+        private uint _user_page_table_w;
+        private uint _sys_page_table_r;
+        private uint _sys_page_table_w;
 
-        private UInt16 _pc;
+        private ushort _pc;
 
         private NTPUMode _sys_curr_mode;
 
@@ -35,35 +32,34 @@ namespace NTPUwork
         // enabeled
         private bool _interrupt_enable;
 
-        private bool _seg_enable;
+        private bool _pt_enable;
 
         private byte _active_interrupt;
+        private uint _interrupt_stack;
 
-        private UInt16 _syscall_entry;
+        private ushort _syscall_entry;
 
         private bool _flag_neg;
         private bool _flag_zero;
         private bool _flag_overflow;
         private bool _flag_carry;
 
-        private UInt32 _last_reset_addr;
+        private bool _encountered_bad_mem_access;
 
-        private List<Char> _print_buf;
+        private uint _last_reset_addr;
+        private ushort _last_reset_addr_virt;
+
 
         public bool Halted;
 
-        public NTPUCPU(uint ram_size, UInt16[] rom)
+        public NTPUCPU(uint ram_size, ushort[] rom)
         {
-            _memory = new UInt16[ram_size];
+            _memory = new ushort[ram_size];
             _rom = rom;
-            _registers = new UInt16[8]; // PC stored seperately.
+            _registers = new ushort[8]; // PC stored seperately.
             _pc = 0x0000;
             _interrupt_enable = false;
-            _seg_enable = true;
-            _user_seg_selectors = new UInt16[8];
-            _sys_seg_selectors = new UInt16[8];
-            _sys_seg_selectors[0] = 0x7F0; // Maps the beginning of ROM to 0x0000
-            _sys_seg_selectors[7] = 0x7F8; // Maps the beginning of control space to 0xE000
+            _pt_enable = false;
             _sys_curr_mode = NTPUMode.System;
             Halted = false;
             _active_interrupt = 0;
@@ -71,44 +67,21 @@ namespace NTPUwork
             _flag_zero = false;
             _flag_carry = false;
             _flag_overflow = false;
-            _print_buf = new List<char>();
             _last_reset_addr = 0;
-
+            _interrupt_stack = 0;
         }
 
-        public UInt16 ReadMemory(UInt32 address)
+        public ushort ReadMemory(uint address)
         {
 
-            UInt16 data;
-            if (address < _memory.Length)
+            ushort data;
+            if (address > 0x007FFF && address < _memory.Length + 0x007FFF)
             {
-                data = _memory[address];
+                data = _memory[address - 0x007FFF];
             }
-            else if (address >= ROM_BEGIN && address < _rom.Length + ROM_BEGIN)
+            else if (address <= 0x007FFF && address < _rom.Length)
             {
-                data = _rom[address - ROM_BEGIN];
-            }
-            else if (address >= 0xFF0000)
-            {
-                switch (address - 0xFF0000)
-                {
-                    case UInt32 n when (n >= 0 && n < 8):
-                        data = _sys_seg_selectors[n];
-                        break;
-                    case UInt32 n when (n >= 8 && n < 16):
-                        data = _user_seg_selectors[n - 8];
-                        break;
-                    case 16:
-                        data = _pc;
-                        break;
-                    case 17:
-                        data = _syscall_entry;
-                        break;
-
-                    default:
-                        data = 0;
-                        break;
-                }
+                data = _rom[address];
             }
             else
             {
@@ -118,33 +91,16 @@ namespace NTPUwork
             return data;
         }
 
-        public void WriteMemory(UInt32 address, UInt16 data)
+        public void WriteMemory(uint address, ushort data)
         {
             Console.WriteLine("Memory write: {0:x4} to {1:x6}", data, address);
-            if (address < _memory.Length)
+            if (address > 0x7FFF && address < _memory.Length + 0x7FFF)
             {
-                _memory[address] = data;
+                _memory[address - 0x007FFF] = data;
             }
-            else if (address >= ROM_BEGIN && address < _rom.Length + ROM_BEGIN)
+            else if (address <= 0x007FFF)
             {
-                // Nothing happens.
-            }
-            else if (address >= 0xFF0000)
-            {
-                switch (address - 0xFF0000)
-                {
-                    case UInt32 n when (n >= 0 && n < 8):
-                        _sys_seg_selectors[n] = data;
-                        break;
-                    case UInt32 n when (n >= 8 && n < 16):
-                        _user_seg_selectors[n - 8] = data;
-                        break;
-                    case 16:
-                        break;
-                    case 17:
-                        _syscall_entry = data;
-                        break;
-                }
+                // Nothing happens. ROM.
             }
             else
             {
@@ -152,30 +108,42 @@ namespace NTPUwork
             }
         }
 
-        public UInt32 CalculateFullAddress(UInt16 address)
+        public uint CalculateFullAddress(ushort address, uint ptab)
         {
-            var selector = address >> 13;
-            UInt32 segment;
-            if (_sys_curr_mode == NTPUMode.User)
+            if (_pt_enable)
             {
-                segment = (UInt32)_user_seg_selectors[selector] << 13;
+                uint psel = (uint)(address & 0xFF00) >> 8;
+                uint dsel = (uint)address & 0xFF;
+                uint addr_upper = ReadMemory(ptab + psel);
+
+                if (addr_upper == 0xFFFF)
+                {
+                    _encountered_bad_mem_access = true; // page 0xFFFF is guarenteed to be filled with 0x0000.
+                    return 0; // return 0 anyways just in case.
+                }
+                Console.WriteLine("Paged addr: {0} | P {1} | D {2}", (addr_upper << 8) & dsel, psel, dsel);
+                return (addr_upper << 8) | dsel;
             }
             else
             {
-                segment = (UInt32)_sys_seg_selectors[selector] << 13;
+                return address;
             }
-            return segment | ((UInt32)address & 8191);
         }
 
-        public UInt16 ReadMemorySegmented(UInt16 address)
+        public void RaiseInvalidInstructionException()
         {
-            var fulladdr = CalculateFullAddress(address);
+            //TODO
+        }
+
+        public ushort ReadMemoryPaged(ushort address)
+        {
+            var fulladdr = CalculateFullAddress(address, (_sys_curr_mode == NTPUMode.System) ? _sys_page_table_r : _user_page_table_r);
             return ReadMemory(fulladdr);
         }
 
-        public void WriteMemorySegmented(UInt16 address, UInt16 data)
+        public void WriteMemoryPaged(ushort address, ushort data)
         {
-            var fulladdr = CalculateFullAddress(address);
+            var fulladdr = CalculateFullAddress(address, (_sys_curr_mode == NTPUMode.System) ? _sys_page_table_w : _user_page_table_w);
             WriteMemory(fulladdr, data);
         }
 
@@ -186,7 +154,12 @@ namespace NTPUwork
 
         public void ExecuteInstruction()
         {
-            var instr = ReadMemorySegmented(_pc);
+            var instr = ReadMemoryPaged(_pc);
+            if (instr == 0x0000)
+            {
+                Halted = true;
+                return;
+            }
             byte opcode = (byte)(instr & 0xFF);
             byte upbyte = (byte)((instr & 0xFF00) >> 8);
             Console.WriteLine("Executing instr {0:X4}", instr);
@@ -197,14 +170,15 @@ namespace NTPUwork
             bool standard_encode_1 = false;
             bool standard_encode_2 = false;
             bool calc_flags = true;
+            bool do_pc_increment = true;
 
             Console.WriteLine("Dest: {0:x1}, ctrl: {1:x1}, r7offs: {2:x1}, src: {3:x1}", dest, ctrl, r7offs, src);
             // Ew. handles if an instr should use the normal load/store setup.
             switch (opcode) {
-                case byte n when (n <= 0x24 && ((n & 0x01) == 0)):
+                case byte n when (n <= 0x20 && ((n & 0x01) == 0)):
                     standard_encode_1 = true;
                     break;
-                case byte n when (n <= 0x24 && ((n & 0x01) == 1)):
+                case byte n when (n <= 0x20 && ((n & 0x01) == 1)):
                     standard_encode_2 = true;
                     break;
                 case 0xFC: // Jcc Rn
@@ -213,14 +187,12 @@ namespace NTPUwork
                 case 0xFF: // hlt code
                     // neither of the normal encodes.
                     break;
-                
-
             }
 
-            UInt16 src_val;
-            UInt16 dest_val;
-            UInt16 dest_write = 0;
-            UInt16 imm = 0; // Yes, globalizing this is nasty. But it removes
+            ushort src_val;
+            ushort dest_val;
+            ushort dest_write = 0;
+            ushort imm = 0; // Yes, globalizing this is nasty. But it removes
                             // prevents a spurious memory read that shouldn't
                             // occur
             if (standard_encode_1)
@@ -232,19 +204,19 @@ namespace NTPUwork
                 else if (ctrl == 2)
                 {
                     var addr = _registers[src];
-                    src_val = ReadMemorySegmented(addr);
+                    src_val = ReadMemoryPaged(addr);
                 }
                 else
                 {
-                    var addr = (UInt16)(_registers[7] + (UInt16)SextR7Offs(r7offs));
-                    src_val = ReadMemorySegmented(addr);
+                    var addr = (ushort)(_registers[7] + (ushort)SextR7Offs(r7offs));
+                    src_val = ReadMemoryPaged(addr);
                 }
             } else if (standard_encode_2)
             {
                 if (ctrl == 0)
                 {
                     // Immediate modes
-                    imm = ReadMemorySegmented((UInt16)(_pc + 1));
+                    imm = ReadMemoryPaged((ushort)(_pc + 1));
                     _pc += 1;
                     switch (src)
                     {
@@ -253,12 +225,12 @@ namespace NTPUwork
                             src_val = imm;
                             break;
                         case 1:
-                            src_val = ReadMemorySegmented(imm);
+                            src_val = ReadMemoryPaged(imm);
                             dest_val = _registers[dest];
                             break;
                         case 2:
                             src_val = _registers[dest]; // swap mode.
-                            dest_val = ReadMemorySegmented(imm);
+                            dest_val = ReadMemoryPaged(imm);
                             break;
                         default:
                             _active_interrupt = 1; // Invalid instr
@@ -270,12 +242,12 @@ namespace NTPUwork
                     src_val = _registers[src];
                     if (ctrl == 1)
                     {
-                        dest_val = ReadMemorySegmented(_registers[dest]);
+                        dest_val = ReadMemoryPaged(_registers[dest]);
                     }
                     else
                     {
-                        var addr = (UInt16)(_registers[7] + (UInt16)SextR7Offs(r7offs));
-                        dest_val = ReadMemorySegmented(addr);
+                        var addr = (ushort)(_registers[7] + (ushort)SextR7Offs(r7offs));
+                        dest_val = ReadMemoryPaged(addr);
                     }
                 }
             }
@@ -320,14 +292,63 @@ namespace NTPUwork
                 case 0x0F:
                     InstrShr(src_val, dest_val, out dest_write);
                     break;
+                case 0x14:
+                case 0x15:
+                    InstrCmp(src_val, dest_val, out dest_write);
+                    break;
+                case 0x16:
+                case 0x17:
+                    InstrTst(src_val, dest_val, out dest_write);
+                    break;
+                case 0xF8:
+                    do_pc_increment = false;
+                    calc_flags = false;
+                    InstrCall(dest);
+                    break;
+                case 0xF9:
+                    do_pc_increment = false;
+                    calc_flags = false;
+                    InstrRet(dest);
+                    break;
+                case 0xFA:
+                case 0xFB:
+                    InstrLdpr(instr);
+                    calc_flags = false;
+                    break;
                 case 0xFC:
                 case 0xFD:
+                    do_pc_increment = false;
                     InstrJCC(opcode, upbyte, src);
                     calc_flags = false;
                     break;
                 case 0xFF:
+                    if (_sys_curr_mode == NTPUMode.User)
+                    {
+                        goto case 0xFE; //would be fallthrough, but C#.
+                    }
                     calc_flags = false;
                     Halted = true;
+                    do_pc_increment = false;
+                    _last_reset_addr = CalculateFullAddress(_pc, (_sys_curr_mode == NTPUMode.System) ? _sys_page_table_r : _user_page_table_r);
+                    _last_reset_addr_virt = _pc;
+                    break;
+                case 0xFE:
+                    calc_flags = false;
+                    do_pc_increment = false;
+                    _last_reset_addr = CalculateFullAddress(_pc, (_sys_curr_mode == NTPUMode.System) ? _sys_page_table_r : _user_page_table_r);
+                    _last_reset_addr_virt = _pc;
+                    if (_sys_curr_mode == NTPUMode.User)
+                    {
+                        _sys_curr_mode = NTPUMode.System;
+                       
+                        _pc = _syscall_entry; // Go to wherever the system says to.
+                    }
+                    else
+                    {
+                        _pc = 0;
+                        _pt_enable = false;
+                        _interrupt_enable = false;
+                    }
                     break;
                 default:
                     break;
@@ -348,19 +369,19 @@ namespace NTPUwork
                             _registers[dest] = dest_write;
                             break;
                         case 2:
-                            WriteMemorySegmented(imm, dest_write);
+                            WriteMemoryPaged(imm, dest_write);
                             break;
 
                     }
                 }
                 else if (ctrl == 1)
                 {
-                    WriteMemorySegmented(_registers[dest], dest_write);
+                    WriteMemoryPaged(_registers[dest], dest_write);
                 }
                 else
                 {
-                    var addr = (UInt16)(_registers[7] + (UInt16)SextR7Offs(r7offs));
-                    WriteMemorySegmented(addr, dest_write);
+                    var addr = (ushort)(_registers[7] + (ushort)SextR7Offs(r7offs));
+                    WriteMemoryPaged(addr, dest_write);
                 }
             }
 
@@ -370,7 +391,12 @@ namespace NTPUwork
                 _flag_neg |= dest_write >= 0x7FFF;
             }
 
-            _pc += 1;
+            if (do_pc_increment)
+                _pc += 1;
+            if (_pc > 513)
+            {
+                Halted = true;
+            }
         }
 
         public void Tick()

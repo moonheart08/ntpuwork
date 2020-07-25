@@ -1,6 +1,21 @@
-﻿; go to https://hlorenzi.github.io/customasm/web/ to use, or download customasm. Your pick.
-#cpudef
+﻿#bankdef "rom"
 {
+    #addr 0x0000
+    #size 0x4000
+    #outp 0x0
+}
+#bankdef "rom"
+{
+    #addr 0x0000
+    #size 0x4000
+    #outp 0x0
+}
+#bankdef "ram"
+{
+    #addr 0x8000
+    #size 0x4000
+}
+#cpudef {
     #bits 16
     
     #tokendef gpr {
@@ -31,8 +46,23 @@
         ncz = 12,
         p = 13,
         np = 14,
-        
+    }
     
+    #tokendef spr {
+        sptrl = 0,
+        sptrh = 1,
+        sptwl = 2,
+        sptwh = 3,
+        uptrl = 4,
+        uptrh = 5,
+        uptwl = 6,
+        uptwh = 7,
+        lrstl = 8,
+        lrsth = 9,
+        syscl = 10,
+        pten  = 11,
+        itrpt = 12,
+        flags = 31,
     }
     
     ld {dest: gpr}, {src: gpr} 
@@ -308,8 +338,46 @@
     cmp [R7 + {offs: s4}], {src: gpr}
         -> 0x15 @ src[2:0] @ 0b1 @ offs[3:0]
         
-    
         
+    tst {dest: gpr}, {src: gpr} 
+        -> 0x16 @ dest[2:0] @ 0b00 @ src[2:0] 
+    
+    tst {dest: gpr}, [{src: gpr}]
+        -> 0x16 @ dest[2:0] @ 0b01 @ src[2:0]
+    
+    tst {dest: gpr}, [R7 + {offs: s4}]
+        -> 0x16 @ dest[2:0] @ 0b1 @ offs[3:0]
+        
+    tst {dest: gpr}, #{imm: i16}
+        -> 0x17 @ dest[2:0] @ 0b00000 @ imm[7:0] @ imm[15:8]
+    
+    tst {dest: gpr}, [#{imm: i16}]
+        -> 0x17 @ dest[2:0] @ 0b00001 @ imm[7:0] @ imm[15:8]
+        
+    tst [#{imm: i16}], {src: gpr}
+        -> 0x17 @ src[2:0] @ 0b00010 @ imm[7:0] @ imm[15:8]
+    
+    tst [{dest: gpr}], {src: gpr}
+        -> 0x17 @ dest[2:0] @ 0b01 @ src[2:0]
+        
+    tst [R7 + {offs: s4}], {src: gpr}
+        -> 0x17 @ src[2:0] @ 0b1 @ offs[3:0]
+        
+    call {sp: gpr}, {addr: u16} -> 
+    {
+        rel = addr - pc - 2
+        0xF8 @ sp[2:0] @ 0b00000 @ rel[7:0] @ rel[15:8]
+    }
+    
+    ret {sp: gpr}
+        -> 0xF9 @ sp[2:0] @ 0b00000
+        
+    ldpr {pr: spr}, {src: gpr}
+        -> 0xFA @ src[2:0] @ pr[4:0]
+        
+    ldpr {dest: gpr}, {pr: spr}
+        -> 0xFB @ dest[2:0] @ pr[4:0]
+       
     j{t: jmptypes} {a: gpr}
         -> 0xFC @ t[3:0] @ 0b0 @ a[2:0]
         
@@ -322,29 +390,30 @@
     halt {haltcode: i8}
         -> 0xFF @ haltcode[7:0]
 }
+#bank "rom"
 start:
-    ld r1, r2
-    ld r0, #2
-    add r0, #-2
-    jz .what
+    ld r7, #stack_top
+    call r7, foo
+    call r7, bar
     halt 0
-.what:
-    halt 1
-
-; R0 | Str to print
-; R1 | CLOB
-; R2 | CLOB
-
-print_str_8:
-.loop:
-    ld r1, [r0]
-    ld r2, #0xff
-    and r2, r1 ; R2 contains byte 1
-    jz .done
-    ld [#0xF000], r2
-    shr r1, #8 ; R1 contains byte 2
-    jz .done
-    ld [#0xF000], r2
-    jmp .loop
-.done:
-;   ret (r7)+
+    
+foo: 
+    call r7, bar
+finner:
+    ret r7
+bar:
+    ld r0, [r7]
+    cmp r0, #finner
+    jnz .bye
+    call r7, foo
+.bye:
+    ret r7
+    
+callable:
+    
+#bank "ram"
+#addr 0x8000
+syspt_r: #res 256
+syspt_w: #res 256
+stack_bottom: #res 512
+stack_top:
